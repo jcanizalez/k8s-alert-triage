@@ -15,14 +15,14 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "diagrams"
 DRAWIO = shutil.which("drawio") or "/Applications/draw.io.app/Contents/MacOS/draw.io"
 
-INK, MUTED, RULE, SOFT = "#1F2328", "#5F6B76", "#D0D7DE", "#F6F8FA"
-GREEN, GREEN_D, GREEN_L = "#2DA44E", "#1A7F37", "#DAFBE1"
-ORANGE, ORANGE_D, ORANGE_L = "#FB8500", "#9A5B00", "#FFF1E0"
-BLUE, BLUE_D, BLUE_L = "#218BFF", "#0550AE", "#DDF4FF"
-PURPLE, PURPLE_L = "#8250DF", "#FBEFFF"
-RED, RED_L = "#CF222E", "#FFEBE9"
-FONT = "fontFamily=Helvetica;"
-MONO = "fontFamily=Menlo;"
+INK, MUTED, RULE, SOFT = "#000000", "#444444", "#000000", "#F2F2F2"
+GREEN, GREEN_D, GREEN_L = "#117733", "#117733", "#E3F0E7"
+ORANGE, ORANGE_D, ORANGE_L = "#88661A", "#6B5014", "#F4EEDF"
+BLUE, BLUE_D, BLUE_L = "#332288", "#332288", "#E7E5F2"
+PURPLE, PURPLE_L = "#555555", "#EDEDED"
+RED, RED_L = "#882255", "#F3E3EB"
+FONT = "fontFamily=Times New Roman;"
+MONO = "fontFamily=Courier New;"
 
 
 class Figure:
@@ -34,9 +34,9 @@ class Figure:
         return f"c{self.n}"
 
     def box(self, x, y, w, h, label="", fill="#FFFFFF", stroke=RULE, color=INK, size=14, bold=False,
-            align="center", valign="middle", mono=False, rounded=True, dashed=False, extra="", sub=None):
+            align="center", valign="middle", mono=False, rounded=False, dashed=False, extra="", sub=None):
         cid = self._id()
-        style = (f"rounded={int(rounded)};arcSize=6;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
+        style = (f"rounded={int(rounded)};arcSize=6;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth=1;"
                  f"fontColor={color};fontSize={size};fontStyle={1 if bold else 0};align={align};"
                  f"verticalAlign={valign};spacingLeft=8;spacingRight=8;{MONO if mono else FONT}"
                  f"{'dashed=1;' if dashed else ''}{extra}")
@@ -79,7 +79,7 @@ class Figure:
             ports += f"exitX={exit_[0]};exitY={exit_[1]};exitDx=0;exitDy=0;"
         if entry:
             ports += f"entryX={entry[0]};entryY={entry[1]};entryDx=0;entryDy=0;"
-        style = (f"edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor={color};"
+        style = (f"edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor={color};"
                  f"strokeWidth={width};fontColor={color};fontSize=12;{FONT}labelBackgroundColor=#FFFFFF;"
                  f"{'dashed=1;' if dashed else ''}{ports}")
         self.cells.append(f'<mxCell id="{cid}" value="{html.escape(label)}" style="{style}" edge="1" parent="1" '
@@ -113,7 +113,7 @@ def framework():
     for title, stroke, fill, steps in groups:
         w = 190
         h = 60 + len(steps) * 70
-        f.box(x, 0, w, h, "", fill=fill, stroke=stroke, rounded=True)
+        f.box(x, 0, w, h, "", fill=fill, stroke=stroke, rounded=False)
         f.text(x + 12, 8, w - 24, 30, title, color=stroke, size=14, bold=True)
         for i, s in enumerate(steps):
             cid = f.box(x + 15, 48 + i * 70, w - 30, 52, f"{step}. {s}", stroke=stroke, size=13)
@@ -172,7 +172,7 @@ def windows():
     palette = [(GREEN, GREEN_L), (BLUE, BLUE_L), (PURPLE, PURPLE_L)]
     for (fault, w), (c, cl) in zip(sorted(wins.items(), key=lambda kv: kv[1]["start"]), palette):
         xs = X(w["start"])
-        f.box(xs, 20, px * 300 / span - 4, 240, "", fill=cl, stroke=c, rounded=True)
+        f.box(xs, 20, px * 300 / span - 4, 240, "", fill=cl, stroke=c, rounded=False)
         f.text(xs + 8, 24, 170, 36, f"{fault}\n{len(w['alerts'])} alerts", color=c, size=12, bold=True, mono=True)
         for r in w["alerts"]:
             lane = lanes.index(r["alert"]["labels"]["alertname"])
