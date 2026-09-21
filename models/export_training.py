@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "eval"))
 
 from baseline import FAULTS, SYSTEM, prompt_for  # noqa: E402
+from make_grouped_split import window  # noqa: E402
 
 DATA = ROOT / "data" / "alerts.jsonl"
 SPLIT = ROOT / "results" / "split-grouped.json"
@@ -53,10 +54,6 @@ def main() -> int:
     held = [r for i, r in enumerate(rows) if i in test_idx]
 
     assert len(train) + len(held) == len(rows)
-    def window(row: dict) -> tuple:
-        seen = dt.datetime.fromisoformat(row["captured_at"].replace("Z", "+00:00"))
-        start = seen - dt.timedelta(seconds=float(row.get("seconds_since_injection") or 0))
-        return (row["fault"], str(row.get("fault_target")), start.strftime("%Y-%m-%dT%H:%M"))
 
     shared = {window(r) for r in train} & {window(r) for r in held}
     assert not shared, f"{len(shared)} injection windows appear in both train and eval: {sorted(shared)[:3]}"

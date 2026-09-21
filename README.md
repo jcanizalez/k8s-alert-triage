@@ -32,13 +32,14 @@ diagrams/    figures, drawn from results/
    stratified by class with each injection window on one side only.
 3. **Export.** `python3 models/export_training.py` writes `models/data/train.jsonl` and `eval.jsonl`
    in chat format.
-4. **Train.** Upload both files to a Colab T4 and run `models/train_colab.py`. It scores the base
+4. **Train.** Upload both files and `eval/baseline.py` to a Colab T4 and run `models/train_colab.py`. It scores the base
    model, trains the LoRA adapter, scores again and writes a q8_0 GGUF.
 5. **Compare.** `.venv/bin/python eval/baseline.py --model anthropic/claude-opus-5` scores an API
    model on the same split through OpenRouter (`OPENROUTER_API_KEY` in `.env`).
 6. **Check the packaging.** `models/score_merged.py` and `models/score_quantizations.py` score the
    merged model and each GGUF quantization.
-7. **Serve.** Build `serve/`, apply `serve/manifests.yaml`, copy the GGUF onto the model volume and
+7. **Serve.** Build the service image from the repo root with
+   `docker build -f serve/Dockerfile -t triage:dev .`, apply `serve/manifests.yaml`, copy the GGUF onto the model volume and
    point Alertmanager's `triage` receiver at the service.
 
 ## Requirements

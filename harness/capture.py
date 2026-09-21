@@ -146,7 +146,6 @@ def main() -> None:
             time.sleep(args.interval)
             continue
         rows = []
-        skipped = 0
 
         for alert in fetch_alerts(args.alertmanager):
             labels = alert.get("labels", {})
@@ -160,7 +159,6 @@ def main() -> None:
 
             namespace = labels.get("namespace") or ""
             if namespace != args.namespace:
-                skipped += 1
                 continue
             workload = (
                 labels.get("deployment")

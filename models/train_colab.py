@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Fine-tune Qwen3-1.7B with LoRA on a Colab GPU and score it before and after.
 
-Upload models/data/train.jsonl and eval.jsonl to /content, then run this file in the Colab
+Upload models/data/train.jsonl, eval.jsonl and eval/baseline.py to /content, then run this file in the Colab
 kernel. Writes /content/training.json, the adapter and a q8_0 GGUF.
 """
 import json
 import os
-import re
 import sys
 import time
+
+sys.path.insert(0, "/content")
+from baseline import macro_f1, parse  # noqa: E402
 
 TRAIN = os.environ.get("TRAIN_PATH", "/content/train.jsonl")
 EVAL = os.environ.get("EVAL_PATH", "/content/eval.jsonl")
@@ -18,22 +20,6 @@ EPOCHS = float(os.environ.get("EPOCHS", "3"))
 FOURBIT = os.environ.get("FOURBIT", "0") != "0"
 MAX_SEQ = 4096
 
-FAULTS = [
-    "bad_image_tag",
-    "crashloop_bad_command",
-    "dependency_scaled_to_zero",
-    "dns_broken",
-    "init_container_failing",
-    "liveness_probe_failing",
-    "missing_configmap",
-    "missing_secret",
-    "readiness_probe_too_strict",
-    "resource_quota_exceeded",
-    "unschedulable_resources",
-    "wrong_service_selector",
-    "none",
-]
-
 
 def load(path: str) -> list:
     with open(path) as fh:
@@ -42,25 +28,6 @@ def load(path: str) -> list:
 
 def gold(row: dict) -> str:
     return row["messages"][-1]["content"].strip()
-
-
-def parse(text: str) -> str:
-    low = (text or "").lower()
-    hits = [f for f in FAULTS if re.search(rf"\b{re.escape(f)}\b", low)]
-    return max(hits, key=lambda f: low.rfind(f)) if hits else "unparseable"
-
-
-def macro_f1(pairs: list) -> float:
-    labels = {g for g, _ in pairs}
-    total = 0.0
-    for label in labels:
-        tp = sum(1 for g, p in pairs if g == label and p == label)
-        fp = sum(1 for g, p in pairs if g != label and p == label)
-        fn = sum(1 for g, p in pairs if g == label and p != label)
-        prec = tp / (tp + fp) if tp + fp else 0.0
-        rec = tp / (tp + fn) if tp + fn else 0.0
-        total += 2 * prec * rec / (prec + rec) if prec + rec else 0.0
-    return total / len(labels) if labels else 0.0
 
 
 def score(model, tokenizer, rows: list, note: str) -> dict:

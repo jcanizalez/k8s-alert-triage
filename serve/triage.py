@@ -2,48 +2,28 @@
 """Alertmanager webhook that triages each firing alert with the in-cluster model.
 
 Reads the alert's namespace through a read-only ServiceAccount, asks llama-server for a fault
-id, and returns the verdict. SYSTEM, FAULTS and the prompt match eval/baseline.py.
+id, and returns the verdict. The prompt, labels and parsing come from eval/baseline.py.
 """
+import asyncio
 import json
 import logging
 import os
-import re
 
 import httpx
 from fastapi import FastAPI, Request
 from kubernetes import client, config
 
+from baseline import SYSTEM, parse, prompt_for
+
 LLAMA = os.environ.get("LLAMA_URL", "http://llama-server:8080/v1/chat/completions")
 VERDICT_SINK = os.environ.get("VERDICT_URL", "")
 TIMEOUT = float(os.environ.get("TIMEOUT_S", "60"))
 
-FAULTS = [
-    "bad_image_tag",
-    "crashloop_bad_command",
-    "dependency_scaled_to_zero",
-    "dns_broken",
-    "init_container_failing",
-    "liveness_probe_failing",
-    "missing_configmap",
-    "missing_secret",
-    "readiness_probe_too_strict",
-    "resource_quota_exceeded",
-    "unschedulable_resources",
-    "wrong_service_selector",
-    "none",
-]
-
-SYSTEM = f"""You triage Kubernetes alerts. Given one alert and the state of its namespace, name
-the single fault that caused it.
-
-Answer with exactly one of these ids and nothing else:
-{chr(10).join('- ' + f for f in FAULTS)}
-
-Use `none` when the alert is routine noise rather than the result of one of those faults."""
 
 log = logging.getLogger("triage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 app = FastAPI()
+http = httpx.AsyncClient(timeout=TIMEOUT)
 
 config.load_incluster_config()
 core = client.CoreV1Api()
@@ -96,40 +76,6 @@ def context_bundle(namespace: str, workload: str) -> dict:
     return bundle
 
 
-def prompt_for(labels: dict, annotations: dict, ctx: dict) -> str:
-    lines = [
-        f"ALERT: {labels.get('alertname')}",
-        f"severity: {labels.get('severity', 'unknown')}",
-        f"namespace: {ctx.get('namespace') or labels.get('namespace', '')}",
-        f"object: {labels.get('pod') or labels.get('service') or labels.get('deployment') or ''}",
-        f"summary: {annotations.get('summary', '')}",
-        f"description: {annotations.get('description', '')}",
-        "",
-        "PODS:",
-    ]
-    for p in ctx.get("pods", [])[:8]:
-        lines.append(f"  {p['name']}: phase={p.get('phase')} ready={p.get('ready')} "
-                     f"restarts={p.get('restarts')} waiting={p.get('waiting') or []} "
-                     f"lastTerminated={p.get('last_terminated') or []}")
-    if ctx.get("services"):
-        lines += ["", "SERVICES:"]
-        for s in ctx["services"][:8]:
-            external = f" externalName={s['externalName']}" if s.get("externalName") else ""
-            lines.append(f"  {s['name']}: type={s.get('type')} "
-                         f"selector={s.get('selector') or {}}{external}")
-    lines += ["", "RECENT EVENTS:"]
-    for e in ctx.get("events", [])[-10:]:
-        lines.append(f"  {e.get('type')} {e.get('reason')} {e.get('object')}: "
-                     f"{(e.get('message') or '')[:160]}")
-    return "\n".join(lines)
-
-
-def parse(text: str) -> str:
-    low = (text or "").lower()
-    hits = [f for f in FAULTS if re.search(rf"\b{re.escape(f)}\b", low)]
-    return max(hits, key=lambda f: low.rfind(f)) if hits else "unparseable"
-
-
 @app.get("/healthz")
 def healthz() -> dict:
     return {"ok": True}
@@ -146,20 +92,20 @@ async def alert(request: Request) -> dict:
         namespace = labels.get("namespace", "")
         workload = (labels.get("deployment") or labels.get("pod")
                     or labels.get("service") or "")
-        ctx = context_bundle(namespace, workload)
+        ctx = await asyncio.to_thread(context_bundle, namespace, workload)
 
         body = {
             "messages": [
                 {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": prompt_for(labels, annotations, ctx)},
+                {"role": "user", "content": prompt_for({"alert": {"labels": labels, "annotations": annotations},
+                                                      "context": ctx})},
             ],
             "temperature": 0,
             "max_tokens": 48,
         }
         try:
-            async with httpx.AsyncClient(timeout=TIMEOUT) as http:
-                answer = await http.post(LLAMA, json=body)
-                said = answer.json()["choices"][0]["message"]["content"]
+            answer = await http.post(LLAMA, json=body)
+            said = answer.json()["choices"][0]["message"]["content"]
         except Exception as exc:
             log.error("model unreachable: %s", exc)
             said = ""
@@ -177,8 +123,7 @@ async def alert(request: Request) -> dict:
 
         if VERDICT_SINK:
             try:
-                async with httpx.AsyncClient(timeout=10) as http:
-                    await http.post(VERDICT_SINK, json=verdict)
+                await http.post(VERDICT_SINK, json=verdict, timeout=10)
             except Exception as exc:
                 log.warning("verdict sink unreachable: %s", exc)
 

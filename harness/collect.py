@@ -38,8 +38,7 @@ def catalogue_ids() -> list[str]:
     import yaml
 
     doc = yaml.safe_load((ROOT / "faults" / "catalogue.yaml").read_text())
-    skip = {"oom_limit_too_low", "cpu_throttle", "netpol_blocks_dependency", "pvc_full"}
-    return [f["id"] for f in doc["faults"] if f["id"] not in skip]
+    return [f["id"] for f in doc["faults"] if not any(k.startswith("requires_") and v for k, v in f.items())]
 
 
 def kubectl(*args: str) -> str:

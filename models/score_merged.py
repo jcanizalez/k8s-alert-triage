@@ -1,16 +1,18 @@
 """Score a LoRA adapter as loaded, then merged to 16-bit and reloaded with plain transformers.
 
-Expects /content/adapter.zip, /content/eval.jsonl and a copy of this file at
-/content/score_merged.py. Writes /content/merge_test.json.
+Expects /content/adapter.zip, /content/eval.jsonl, /content/baseline.py and a copy of this file
+at /content/score_merged.py. Writes /content/merge_test.json.
 """
 
 import json
 import os
-import re
 import subprocess
 import sys
 import time
 import zipfile
+
+sys.path.insert(0, "/content")
+from baseline import macro_f1, parse  # noqa: E402
 
 ADAPTER_ZIP = "/content/adapter.zip"
 ADAPTER_DIR = "/content/adapter"
@@ -20,41 +22,6 @@ OUT = "/content/merge_test.json"
 CHILD_OUT = "/content/merged_score.json"
 SELF = "/content/score_merged.py"
 FOURBIT = os.environ.get("FOURBIT", "0") != "0"
-
-FAULTS = [
-    "bad_image_tag",
-    "crashloop_bad_command",
-    "dependency_scaled_to_zero",
-    "dns_broken",
-    "init_container_failing",
-    "liveness_probe_failing",
-    "missing_configmap",
-    "missing_secret",
-    "readiness_probe_too_strict",
-    "resource_quota_exceeded",
-    "unschedulable_resources",
-    "wrong_service_selector",
-    "none",
-]
-
-
-def parse(text: str) -> str:
-    low = (text or "").lower()
-    hits = [f for f in FAULTS if re.search(rf"\b{re.escape(f)}\b", low)]
-    return max(hits, key=lambda f: low.rfind(f)) if hits else "unparseable"
-
-
-def macro_f1(pairs: list) -> float:
-    labels = {g for g, _ in pairs}
-    total = 0.0
-    for label in labels:
-        tp = sum(1 for g, p in pairs if g == label and p == label)
-        fp = sum(1 for g, p in pairs if g != label and p == label)
-        fn = sum(1 for g, p in pairs if g == label and p != label)
-        prec = tp / (tp + fp) if tp + fp else 0.0
-        rec = tp / (tp + fn) if tp + fn else 0.0
-        total += 2 * prec * rec / (prec + rec) if prec + rec else 0.0
-    return total / len(labels) if labels else 0.0
 
 
 def score(model, tokenizer, rows: list, note: str) -> dict:

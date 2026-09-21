@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir --index-url "$PIP_INDEX_URL" \
       httpx==0.28.1 \
       kubernetes==36.0.3
 
-COPY triage.py .
+COPY eval/baseline.py serve/triage.py ./
 
 EXPOSE 8080
 CMD ["uvicorn", "triage:app", "--host", "0.0.0.0", "--port", "8080"]
