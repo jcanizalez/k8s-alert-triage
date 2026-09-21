@@ -421,6 +421,102 @@ def request_flow():
 
 FIGURES = [framework, architecture, windows, records, messages, template, lora, split, gguf, quantization, request_flow]
 
-if __name__ == "__main__":
+if __name__ == "__main__" and len(__import__("sys").argv) == 1:
     for build in FIGURES:
+        print(build().write().name)
+
+
+def table_figure(name: str, markdown: str, widths: list[int]) -> Figure:
+    """A markdown table drawn as a figure, for places that cannot show tables."""
+    import re
+    rows = [[c.strip() for c in line.strip().strip("|").split("|")]
+            for line in markdown.strip().splitlines() if not re.match(r"^\|[\s\-|]+\|$", line.strip())]
+    clean = lambda t: re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t).replace("**", "").replace("`", "").replace("\\_", "_")
+    f = Figure(name)
+    y = 0
+    for r, row in enumerate(rows):
+        lines = max(max(1, -(-len(clean(c)) * 7 // max(w - 16, 1))) for c, w in zip(row, widths))
+        h = 12 + 17 * lines
+        x = 0
+        for c, w in zip(row, widths):
+            bold = r == 0 or c.startswith("**")
+            f.box(x, y, w, h, clean(c), fill=SOFT if r == 0 else "#FFFFFF", stroke=INK if r == 0 else "#BBBBBB",
+                  size=13, bold=bold, align="left", mono=c.startswith("`") and r > 0)
+            x += w
+        y += h
+    return f
+
+
+def chart_per_fault() -> Figure:
+    tuned = load("training.json")["tuned"]["per_class"]
+    opus = load("headtohead/anthropic_claude-opus-5.json")["per_class"]
+    lite = load("headtohead/google_gemini-3.5-flash-lite.json")["per_class"]
+    rows = []
+    for k, v in tuned.items():
+        c, n = map(int, v.split("/"))
+        rows.append((k, n, c, opus[k]["correct"], lite[k]["correct"]))
+    rows.sort(key=lambda r: (-(r[2] - r[3]) / r[1], r[0]))
+    series = [("Qwen3-1.7B tuned", GREEN), ("Claude Opus 5", ORANGE), ("Gemini 3.5 Flash-Lite", "#AAAAAA")]
+    f = Figure("chart-per-fault")
+    for i, (label, c) in enumerate(series):
+        f.box(230 + i * 180, 0, 14, 14, "", fill=c, stroke=c)
+        f.text(250 + i * 180, -4, 160, 22, label, size=13)
+    x0, px, y = 230, 480, 34
+    for k, n, *vals in rows:
+        f.text(0, y + 6, 220, 30, k, size=13, align="right", mono=True)
+        for j, (v, (_, c)) in enumerate(zip(vals, series)):
+            w = px * v / n
+            f.box(x0, y + j * 13, max(w, 1), 11, "", fill=c, stroke=c)
+            f.text(x0 + w + 4, y + j * 13 - 5, 60, 20, f"{v}/{n}", size=10, color=MUTED)
+        y += 48
+    f.line(x0, 30, x0, y, color=INK, width=1)
+    for p in (0, 0.5, 1):
+        f.text(x0 + px * p - 20, y + 2, 40, 18, f"{p:.0%}", size=11, color=MUTED, align="center")
+    return f
+
+
+def chart_four_ways() -> Figure:
+    m, q = load("merge-test.json"), load("quantizations.json")
+    opus = load("headtohead/anthropic_claude-opus-5.json")["accuracy"]
+    bars = [("Adapter, 16-bit", m["adapter_as_loaded"]["accuracy"], GREEN), ("Merged, 16-bit", m["merged_16bit"]["accuracy"], GREEN),
+            ("GGUF q8_0", q["q8_0"]["accuracy"], GREEN), ("GGUF q4_k_m", q["q4_k_m"]["accuracy"], RED)]
+    f = Figure("chart-four-ways")
+    top, base, x0 = 20, 320, 60
+    Y = lambda v: base - (base - top) * v
+    for v in (0, 0.25, 0.5, 0.75, 1):
+        f.line(x0, Y(v), x0 + 560, Y(v), color="#DDDDDD", width=1)
+        f.text(0, Y(v) - 10, 52, 20, f"{v:.0%}", size=12, color=MUTED, align="right")
+    for i, (label, v, c) in enumerate(bars):
+        x = x0 + 30 + i * 135
+        f.box(x, Y(v), 90, base - Y(v), "", fill=c, stroke=c)
+        f.text(x - 10, Y(v) - 24, 110, 20, f"{v:.1%}", size=14, bold=True, align="center")
+        f.text(x - 20, base + 6, 130, 20, label, size=13, align="center")
+    f.line(x0, Y(opus), x0 + 560, Y(opus), color=ORANGE, width=1.5, dashed=True)
+    f.text(x0 + 400, Y(opus) - 22, 160, 20, f"Claude Opus 5, {opus:.1%}", size=12, color=ORANGE_D, align="right")
+    return f
+
+
+TABLE_WIDTHS = {
+    "table-approaches": [150, 190, 150, 190, 190],
+    "table-memory": [220, 160, 160],
+    "table-catalogue": [230, 380, 70],
+    "table-settings": [230, 100, 400],
+    "table-results": [280, 110, 110, 180],
+    "table-precision": [70, 60, 230, 360],
+    "table-flags": [150, 560],
+    "table-checklist": [140, 300, 280],
+}
+
+
+def tables_from(doc: Path) -> None:
+    """Draw every table in an exported article as a figure, in order, named by TABLE_WIDTHS."""
+    import re
+    blocks = re.findall(r"((?:^\|.*\|\n)+)", doc.read_text(), flags=re.M)
+    for (name, widths), block in zip(TABLE_WIDTHS.items(), blocks):
+        print(table_figure(name, block, widths).write().name)
+
+
+if __name__ == "__main__" and len(__import__("sys").argv) > 1:
+    tables_from(Path(__import__("sys").argv[1]))
+    for build in (chart_per_fault, chart_four_ways):
         print(build().write().name)
