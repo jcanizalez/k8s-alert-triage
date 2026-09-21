@@ -1,0 +1,101 @@
+{
+  "model": "google/gemini-3.5-flash-lite",
+  "scored_at": "2026-09-18T19:14:08Z",
+  "records_scored": 124,
+  "dataset_records": 426,
+  "accuracy": 0.6048,
+  "macro_f1": 0.5575,
+  "unparseable": 0,
+  "latency_mean_s": 0.98,
+  "latency_p95_s": 1.38,
+  "tokens_in": 96166,
+  "tokens_out": 599,
+  "per_class": {
+    "bad_image_tag": {
+      "n": 9,
+      "correct": 7
+    },
+    "crashloop_bad_command": {
+      "n": 14,
+      "correct": 8
+    },
+    "dependency_scaled_to_zero": {
+      "n": 9,
+      "correct": 0
+    },
+    "dns_broken": {
+      "n": 8,
+      "correct": 0
+    },
+    "init_container_failing": {
+      "n": 10,
+      "correct": 5
+    },
+    "liveness_probe_failing": {
+      "n": 8,
+      "correct": 5
+    },
+    "missing_configmap": {
+      "n": 11,
+      "correct": 9
+    },
+    "missing_secret": {
+      "n": 8,
+      "correct": 8
+    },
+    "none": {
+      "n": 8,
+      "correct": 6
+    },
+    "readiness_probe_too_strict": {
+      "n": 9,
+      "correct": 8
+    },
+    "resource_quota_exceeded": {
+      "n": 9,
+      "correct": 7
+    },
+    "unschedulable_resources": {
+      "n": 12,
+      "correct": 5
+    },
+    "wrong_service_selector": {
+      "n": 9,
+      "correct": 7
+    }
+  },
+  "confusion_top": [
+    [
+      "dependency_scaled_to_zero->missing_configmap",
+      9
+    ],
+    [
+      "dns_broken->crashloop_bad_command",
+      5
+    ],
+    [
+      "init_container_failing->missing_secret",
+      4
+    ],
+    [
+      "crashloop_bad_command->none",
+      3
+    ],
+    [
+      "unschedulable_resources->wrong_service_selector",
+      3
+    ],
+    [
+      "unschedulable_resources->none",
+      3
+    ],
+    [
+      "crashloop_bad_command->bad_image_tag",
+      2
+    ],
+    [
+      "dns_broken->wrong_service_selector",
+      2
+    ]
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "records": 124,
+  "adapter_as_loaded": {
+    "note": "adapter as loaded",
+    "accuracy": 0.8225806451612904,
+    "macro_f1": 0.8081594373449578,
+    "unparseable": 0,
+    "seconds": 51.5,
+    "per_class": {
+      "bad_image_tag": "9/9",
+      "crashloop_bad_command": "14/14",
+      "dependency_scaled_to_zero": "7/9",
+      "dns_broken": "3/8",
+      "init_container_failing": "8/10",
+      "liveness_probe_failing": "5/8",
+      "missing_configmap": "11/11",
+      "missing_secret": "8/8",
+      "none": "4/8",
+      "readiness_probe_too_strict": "8/9",
+      "resource_quota_exceeded": "8/9",
+      "unschedulable_resources": "12/12",
+      "wrong_service_selector": "5/9"
+    }
+  },
+  "merged_16bit": {
+    "note": "merged 16-bit through transformers",
+    "accuracy": 0.8064516129032258,
+    "macro_f1": 0.7890665570451809,
+    "unparseable": 0,
+    "seconds": 60.2,
+    "per_class": {
+      "bad_image_tag": "9/9",
+      "crashloop_bad_command": "14/14",
+      "dependency_scaled_to_zero": "7/9",
+      "dns_broken": "3/8",
+      "init_container_failing": "8/10",
+      "liveness_probe_failing": "5/8",
+      "missing_configmap": "11/11",
+      "missing_secret": "8/8",
+      "none": "3/8",
+      "readiness_probe_too_strict": "8/9",
+      "resource_quota_exceeded": "7/9",
+      "unschedulable_resources": "12/12",
+      "wrong_service_selector": "5/9"
+    }
+  },
+  "at": "2026-09-19T15:00:57Z"
+}

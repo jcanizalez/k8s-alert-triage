@@ -1,0 +1,23 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: triage
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 30090
+        hostPort: 30090
+        protocol: TCP
+      - containerPort: 30093
+        hostPort: 30093
+        protocol: TCP
+      - containerPort: 30300
+        hostPort: 30300
+        protocol: TCP
+  - role: worker
+  - role: worker

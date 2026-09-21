@@ -1,0 +1,59 @@
+{
+  "base_model": "unsloth/Qwen3-1.7B",
+  "quantization": "16-bit base",
+  "method": "LoRA r=16, 3.0 epochs",
+  "trainable_params": 17432576,
+  "total_params": 1738007552,
+  "trainable_share": 0.01003,
+  "train_records": 302,
+  "eval_records": 124,
+  "train_runtime_s": 540.7,
+  "hardware": "Tesla T4",
+  "at": "2026-09-18T19:15:12Z",
+  "untuned": {
+    "note": "unsloth/Qwen3-1.7B untuned",
+    "accuracy": 0.10483870967741936,
+    "macro_f1": 0.06253582483090679,
+    "unparseable": 0,
+    "empty": 0,
+    "seconds": 27.2,
+    "per_class": {
+      "bad_image_tag": "1/9",
+      "crashloop_bad_command": "0/14",
+      "dependency_scaled_to_zero": "0/9",
+      "dns_broken": "0/8",
+      "init_container_failing": "0/10",
+      "liveness_probe_failing": "4/8",
+      "missing_configmap": "0/11",
+      "missing_secret": "0/8",
+      "none": "8/8",
+      "readiness_probe_too_strict": "0/9",
+      "resource_quota_exceeded": "0/9",
+      "unschedulable_resources": "0/12",
+      "wrong_service_selector": "0/9"
+    }
+  },
+  "tuned": {
+    "note": "unsloth/Qwen3-1.7B tuned",
+    "accuracy": 0.7983870967741935,
+    "macro_f1": 0.7930899822204172,
+    "unparseable": 0,
+    "empty": 0,
+    "seconds": 50.0,
+    "per_class": {
+      "bad_image_tag": "7/9",
+      "crashloop_bad_command": "14/14",
+      "dependency_scaled_to_zero": "8/9",
+      "dns_broken": "3/8",
+      "init_container_failing": "8/10",
+      "liveness_probe_failing": "6/8",
+      "missing_configmap": "11/11",
+      "missing_secret": "8/8",
+      "none": "3/8",
+      "readiness_probe_too_strict": "9/9",
+      "resource_quota_exceeded": "7/9",
+      "unschedulable_resources": "9/12",
+      "wrong_service_selector": "6/9"
+    }
+  }
+}

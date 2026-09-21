@@ -1,0 +1,96 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: triage-harness
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: workload-health
+      interval: 15s
+      rules:
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[3m]) > 2
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "Pod {{ $labels.pod }} is restarting repeatedly"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} restarted more than twice in three minutes."
+
+        - alert: PodNotReady
+          expr: kube_pod_status_ready{condition="false"} == 1
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "Pod {{ $labels.pod }} is not ready"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} has been not ready for two minutes."
+
+        - alert: ContainerWaiting
+          expr: kube_pod_container_status_waiting_reason{reason!="ContainerCreating"} == 1
+          for: 1m
+          labels: { severity: warning }
+          annotations:
+            summary: "Container {{ $labels.container }} is waiting: {{ $labels.reason }}"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} is stuck in {{ $labels.reason }}."
+
+        - alert: ContainerOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          for: 30s
+          labels: { severity: critical }
+          annotations:
+            summary: "Container {{ $labels.container }} was OOMKilled"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} exceeded its memory limit."
+
+        - alert: PodPending
+          expr: kube_pod_status_phase{phase="Pending"} == 1
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "Pod {{ $labels.pod }} is pending"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} has not been scheduled for two minutes."
+
+        - alert: DeploymentReplicasMismatch
+          expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_available
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} has fewer replicas than it wants"
+            description: "{{ $labels.namespace }}/{{ $labels.deployment }} is short of available replicas."
+
+    - name: service-health
+      interval: 15s
+      rules:
+        - alert: ServiceHasNoEndpoints
+          expr: >
+            kube_service_info{service!="kubernetes"}
+            unless on (namespace, service)
+            label_replace(
+              sum by (namespace, endpointslice) (kube_endpointslice_endpoints{ready="true"}),
+              "service", "$1", "endpointslice", "(.*)-[a-z0-9]+"
+            )
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "Service {{ $labels.service }} has no ready endpoints"
+            description: "{{ $labels.namespace }}/{{ $labels.service }} matches no ready pods; callers will fail while the pods themselves look healthy."
+
+        - alert: CPUThrottlingHigh
+          expr: >
+            rate(container_cpu_cfs_throttled_periods_total{container!="",container!="loadgen"}[3m])
+            / clamp_min(rate(container_cpu_cfs_periods_total{container!="",container!="loadgen"}[3m]), 1) > 0.5
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "Container {{ $labels.container }} is throttled over half the time"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} is hitting its CPU limit."
+
+        - alert: MemoryNearLimit
+          expr: >
+            container_memory_working_set_bytes{container!=""}
+            / clamp_min(kube_pod_container_resource_limits{resource="memory"}, 1) > 0.9
+          for: 1m
+          labels: { severity: warning }
+          annotations:
+            summary: "Container {{ $labels.container }} is near its memory limit"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} is above 90% of its limit."

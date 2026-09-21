@@ -1,0 +1,123 @@
+
+categories:
+  - resource_saturation
+  - config_error
+  - image_error
+  - dependency_failure
+  - network_policy
+  - storage
+  - scheduling
+  - application_crash
+  - noise
+
+faults:
+  - id: oom_limit_too_low
+    category: resource_saturation
+    how: set the container memory limit below its working set
+    expect: OOMKilled, restarts climbing, pod not ready
+    target: deployment
+    requires_memory_growth: true
+
+  - id: cpu_throttle
+    category: resource_saturation
+    how: set a CPU limit far below demand and drive load
+    expect: throttling, latency and error-rate alerts, no restarts
+    target: deployment
+    requires_cpu_load: true
+
+  - id: bad_image_tag
+    category: image_error
+    how: point the container at a tag that does not exist
+    expect: ImagePullBackOff, pod never ready
+    target: deployment
+
+  - id: crashloop_bad_command
+    category: application_crash
+    how: replace the entrypoint with a command that exits non-zero
+    expect: CrashLoopBackOff, restart count rising fast
+    target: deployment
+
+  - id: wrong_service_selector
+    category: config_error
+    how: change the service selector so it matches no pods
+    expect: endpoints empty, callers fail, pods themselves healthy
+    target: service
+
+  - id: missing_configmap
+    category: config_error
+    how: mount a ConfigMap that does not exist
+    expect: CreateContainerConfigError, pod stuck pending
+    target: deployment
+
+  - id: dependency_scaled_to_zero
+    category: dependency_failure
+    how: scale a downstream dependency to zero replicas
+    expect: caller errors and timeouts, dependency has no pods
+    target: deployment
+
+  - id: netpol_blocks_dependency
+    category: network_policy
+    how: apply a NetworkPolicy that denies egress to a dependency
+    expect: connection timeouts, both workloads look healthy
+    target: namespace
+    requires_cni_policy: true
+
+  - id: dns_broken
+    category: dependency_failure
+    how: point the service to an unresolvable external name
+    expect: name resolution errors in logs, no pod restarts
+    target: service
+
+  - id: pvc_full
+    category: storage
+    how: fill the mounted volume
+    expect: write failures, disk pressure, pod may stay running
+    target: statefulset
+    requires_volume: true
+
+  - id: unschedulable_resources
+    category: scheduling
+    how: request more CPU or memory than any node has
+    expect: pod pending, FailedScheduling events
+    target: deployment
+
+  - id: readiness_probe_too_strict
+    category: config_error
+    how: set the readiness probe to a path that never returns 200
+
+  - id: liveness_probe_failing
+    category: config_error
+    how: point the liveness probe at a path that never returns 200, so the kubelet keeps killing a healthy container
+
+  - id: missing_secret
+    category: config_error
+    how: mount a Secret that does not exist
+
+  - id: resource_quota_exceeded
+    category: config_error
+    how: cap the namespace below the replica count so new pods are rejected outright
+
+  - id: init_container_failing
+    category: application_crash
+    how: add an init container that exits non-zero, so the pod never starts
+    expect: pods running but never ready, rollout stuck
+    target: deployment
+
+  - id: slow_rollout
+    category: noise
+    noise: true
+    how: deploy again with minReadySeconds set, so the rollout outlasts the alert's patience
+    expect: replicas mismatched for about three minutes, then green with no intervention
+    target: deployment
+
+  - id: scale_up_burst
+    category: noise
+    noise: true
+    how: scale up with minReadySeconds set, so the new pods are slow to count as available
+    expect: replicas mismatched while three new pods settle, then green on their own
+    target: deployment
+
+window:
+  settle_before: 120s
+  observe_after_injection: 300s
+  revert_and_settle: 180s

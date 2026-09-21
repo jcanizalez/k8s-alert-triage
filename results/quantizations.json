@@ -1,0 +1,118 @@
+{
+  "q8_0": {
+    "accuracy": 0.7742,
+    "macro_f1": 0.7484,
+    "per_class": {
+      "bad_image_tag": {
+        "n": 9,
+        "correct": 9
+      },
+      "crashloop_bad_command": {
+        "n": 14,
+        "correct": 14
+      },
+      "dependency_scaled_to_zero": {
+        "n": 9,
+        "correct": 4
+      },
+      "dns_broken": {
+        "n": 8,
+        "correct": 2
+      },
+      "init_container_failing": {
+        "n": 10,
+        "correct": 8
+      },
+      "liveness_probe_failing": {
+        "n": 8,
+        "correct": 5
+      },
+      "missing_configmap": {
+        "n": 11,
+        "correct": 11
+      },
+      "missing_secret": {
+        "n": 8,
+        "correct": 8
+      },
+      "none": {
+        "n": 8,
+        "correct": 3
+      },
+      "readiness_probe_too_strict": {
+        "n": 9,
+        "correct": 8
+      },
+      "resource_quota_exceeded": {
+        "n": 9,
+        "correct": 7
+      },
+      "unschedulable_resources": {
+        "n": 12,
+        "correct": 12
+      },
+      "wrong_service_selector": {
+        "n": 9,
+        "correct": 5
+      }
+    }
+  },
+  "q4_k_m": {
+    "accuracy": 0.3065,
+    "macro_f1": 0.2568,
+    "per_class": {
+      "bad_image_tag": {
+        "n": 9,
+        "correct": 1
+      },
+      "crashloop_bad_command": {
+        "n": 14,
+        "correct": 1
+      },
+      "dependency_scaled_to_zero": {
+        "n": 9,
+        "correct": 9
+      },
+      "dns_broken": {
+        "n": 8,
+        "correct": 0
+      },
+      "init_container_failing": {
+        "n": 10,
+        "correct": 0
+      },
+      "liveness_probe_failing": {
+        "n": 8,
+        "correct": 4
+      },
+      "missing_configmap": {
+        "n": 11,
+        "correct": 3
+      },
+      "missing_secret": {
+        "n": 8,
+        "correct": 0
+      },
+      "none": {
+        "n": 8,
+        "correct": 0
+      },
+      "readiness_probe_too_strict": {
+        "n": 9,
+        "correct": 4
+      },
+      "resource_quota_exceeded": {
+        "n": 9,
+        "correct": 8
+      },
+      "unschedulable_resources": {
+        "n": 12,
+        "correct": 8
+      },
+      "wrong_service_selector": {
+        "n": 9,
+        "correct": 0
+      }
+    }
+  }
+}

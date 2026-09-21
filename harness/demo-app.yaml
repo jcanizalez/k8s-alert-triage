@@ -1,0 +1,162 @@
+# A two-service app: a frontend that calls a backend. Small enough for a laptop VM,
+# and enough structure for faults that break a dependency rather than the workload itself.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: demo
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      location / {
+        return 200 'frontend ok\n';
+        add_header Content-Type text/plain;
+      }
+      # The dependency call. When the backend has no endpoints this returns 502,
+      # which is what the dependency and network-policy faults are meant to produce.
+      location /api {
+        proxy_pass http://backend.demo.svc.cluster.local:8080/;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 2s;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: demo
+  labels: { app: frontend }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: config
+          configMap: { name: frontend-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: demo
+spec:
+  selector: { app: frontend }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: demo
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      location / {
+        return 200 'backend ok\n';
+        add_header Content-Type text/plain;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: demo
+  labels: { app: backend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: config
+          configMap: { name: backend-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: demo
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# Constant traffic, so latency and error-rate alerts have something to measure and
+# CPU limits actually bite.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: demo
+  labels: { app: loadgen }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: loadgen }
+  template:
+    metadata:
+      labels: { app: loadgen }
+    spec:
+      containers:
+        - name: loadgen
+          image: curlimages/curl:8.11.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                curl -s -o /dev/null -m 3 http://frontend.demo.svc.cluster.local:8080/ || true
+                curl -s -o /dev/null -m 3 http://frontend.demo.svc.cluster.local:8080/api || true
+                sleep 0.5
+              done
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }

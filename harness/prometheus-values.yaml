@@ -1,0 +1,63 @@
+
+defaultRules:
+  disabled:
+    CPUThrottlingHigh: true
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    retention: 6h
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+      limits: { memory: 1Gi }
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  service:
+    type: NodePort
+    nodePort: 30093
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 25m, memory: 100Mi }
+  config:
+    global:
+      resolve_timeout: 2m
+    route:
+      group_by: ['alertname', 'namespace', 'pod']
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 1h
+      receiver: 'triage'
+    receivers:
+      - name: 'null'
+      - name: 'triage'
+        webhook_configs:
+          - url: http://triage.triage.svc.cluster.local:8080/alert
+            send_resolved: false
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 30300
+  adminPassword: triage
+  resources:
+    requests: { cpu: 25m, memory: 100Mi }
+
+kubeEtcd: { enabled: false }
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeProxy: { enabled: false }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 30Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 60Mi }

@@ -1,0 +1,2 @@
+# Harness dependencies. Training and scoring run on Colab and install their own.
+PyYAML>=6.0
