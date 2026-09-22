@@ -17,3 +17,4 @@ models/*.zip
 
 # Local reading notes
 references/
+models/hf-release/
